@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TETRIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0a0a0f;
+      font-family: 'Press Start 2P', monospace;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-container {
+      position: relative;
+      max-width: 900px;
+      width: 100%;
+      text-align: center;
+    }
+
+    #game-layout {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    #left-panel, #right-panel {
+      width: 160px;
+      flex-shrink: 0;
+      background: rgba(10, 10, 20, 0.9);
+      border: 1px solid rgba(100, 100, 255, 0.15);
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 100, 255, 0.1), inset 0 0 15px rgba(0, 0, 0, 0.5);
+      padding: 12px;
+    }
+
+    .panel-section {
+      margin-bottom: 16px;
+    }
+
+    .panel-section h3 {
+      font-size: 10px;
+      color: #888;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(100, 100, 255, 0.1);
+      padding-bottom: 4px;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      padding: 4px 0;
+    }
+
+    .stat-label {
+      color: #666;
+    }
+
+    .stat span:last-child {
+      color: #fff;
+    }
+
+    #playfield-wrapper {
+      position: relative;
+      border: 2px solid rgba(100, 100, 255, 0.2);
+      border-radius: 4px;
+      box-shadow: 0 0 30px rgba(0, 100, 255, 0.15), inset 0 0 30px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    #playfield-canvas {
+      display: block;
+      background-color: #0a0a0f;
+    }
+
+    #scanline-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      z-index: 2;
+    }
+
+    #crt-vignette {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6), inset 0 0 120px rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      z-index: 3;
+    }
+
+    #floating-texts {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 4;
+      overflow: hidden;
+    }
+
+    #start-screen, #pause-screen, #gameover-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.85);
+    }
+
+    #start-screen h1, #pause-screen h2, #gameover-screen h2 {
+      font-size: 32px;
+      color: #fff;
+      text-shadow: 0 0 20px currentColor;
+    }
+
+    #pause-screen h2 {
+      font-size: 24px;
+    }
+
+    #start-screen .start-prompt, #gameover-screen .restart-prompt, #gameover-screen .new-high-score {
+      font-size: 10px;
+      color: #888;
+      margin-top: 20px;
+      animation: blink 1s infinite;
+    }
+
+    #levelup-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 8;
+      font-size: 20px;
+      color: #ffe500;
+      text-shadow: 0 0 30px #ffe500;
+      pointer-events: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #hold-display, #next-display {
+      background: rgba(10, 10, 20, 0.5);
+      border-radius: 4px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    #next-display {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+    }
+
+    #controls-legend {
+      font-size: 7px;
+      line-height: 2;
+    }
+
+    #controls-legend kbd {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-family: inherit;
+      font-size: 6px;
+    }
+
+    #audio-controls {
+      font-size: 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #audio-controls input[type="range"] {
+      width: 100%;
+      accent-color: #00f5ff;
+    }
+
+    #audio-controls label {
+      cursor: pointer;
+    }
+
+    #combo-display, #btb-display {
+      font-size: 9px;
+      padding: 4px;
+    }
+
+    #btb-display {
+      color: #ffe500;
+      text-shadow: 0 0 10px #ffe500;
+    }
+
+    #combo-display {
+      color: #00f5ff;
+      text-shadow: 0 0 10px #00f5ff;
+    }
+
+    #final-stats .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      padding: 3px 0;
+      width: 200px;
+    }
+
+    #new-high-score {
+      color: #ffe500;
+      font-size: 12px;
+      text-shadow: 0 0 20px #ffe500;
+      animation: pulse 0.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @media (max-width: 700px) {
+      #game-layout {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #left-panel, #right-panel {
+        width: 100%;
+        max-width: 320px;
+      }
+
+      .panel-section h3 {
+        border-bottom: none;
+      }
+
+      #controls-legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+      }
+    }
+
+    #falling-pieces-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .falling-piece {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      animation: fall 4s linear infinite;
+    }
+
+    @keyframes fall {
+      0% { top: -30px; opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <!-- Start Screen Overlay -->
+    <div id="start-screen">
+      <h1>TETRIS</h1>
+      <div class="falling-pieces-bg">
+        <div class="falling-piece" style="background: #00f5ff; left: 10%; animation-delay: 0s;"></div>
+        <div class="falling-piece" style="background: #ff0055; left: 30%; animation-delay: 1s;"></div>
+        <div class="falling-piece" style="background: #ffe500; left: 50%; animation-delay: 2s;"></div>
+        <div class="falling-piece" style="background: #00f5ff; left: 70%; animation-delay: 0.5s;"></div>
+        <div class="falling-piece" style="background: #ff0055; left: 90%; animation-delay: 1.5s;"></div>
+      </div>
+      <p class="start-prompt">PRESS ENTER TO START</p>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pause-screen" class="hidden">
+      <h2>PAUSED</h2>
+      <p>Press P or ESC to resume</p>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameover-screen" class="hidden">
+      <h2>GAME OVER</h2>
+      <div id="final-stats">
+        <div class="stat-row"><span>SCORE</span><span id="stat-score">0</span></div>
+        <div class="stat-row"><span>LINES</span><span id="stat-lines">0</span></div>
+        <div class="stat-row"><span>LEVEL</span><span id="stat-level">0</span></div>
+        <div class="stat-row"><span>TIME</span><span id="stat-time">0:00</span></div>
+        <div class="stat-row"><span>TETRISES</span><span id="stat-tetrises">0</span></div>
+        <div class="stat-row"><span>T-SPINS</span><span id="stat-tspins">0</span></div>
+        <div class="stat-row"><span>PIECES</span><span id="stat-pieces">0</span></div>
+        <div class="stat-row"><span>APM</span><span id="stat-apm">0</span></div>
+      </div>
+      <p id="new-high-score" class="hidden">NEW HIGH SCORE!</p>
+      <p class="restart-prompt">Press R to restart</p>
+    </div>
+
+    <!-- Level Up Overlay -->
+    <div id="levelup-overlay" class="hidden">
+      <span>LEVEL UP!</span>
+    </div>
+
+    <!-- Main Game Layout -->
+    <div id="game-layout">
+      <!-- Left Panel -->
+      <div id="left-panel">
+        <div class="panel-section">
+          <h3>HOLD</h3>
+          <div id="hold-display">
+            <canvas id="hold-canvas" width="100" height="100"></canvas>
+          </div>
+        </div>
+        <div class="panel-section">
+          <div class="stat"><span class="stat-label">SCORE</span><span id="score-display">0</span></div>
+          <div class="stat"><span class="stat-label">LEVEL</span><span id="level-display">1</span></div>
+          <div class="stat"><span class="stat-label">LINES</span><span id="lines-display">0</span></div>
+          <div class="stat"><span class="stat-label">TIME</span><span id="time-display">0:00</span></div>
+          <div class="stat"><span class="stat-label">HIGH</span><span id="high-display">0</span></div>
+        </div>
+        <div class="panel-section">
+          <div id="combo-display" class="hidden">COMBO x0</div>
+          <div id="btb-display" class="hidden">BACK-TO-BACK</div>
+        </div>
+      </div>
+
+      <!-- Center: Playfield -->
+      <div id="playfield-wrapper">
+        <canvas id="playfield-canvas" width="280" height="560"></canvas>
+        <div id="scanline-overlay"></div>
+        <div id="crt-vignette"></div>
+        <!-- Floating text container for animations -->
+        <div id="floating-texts"></div>
+      </div>
+
+      <!-- Right Panel -->
+      <div id="right-panel">
+        <div class="panel-section">
+          <h3>NEXT</h3>
+          <div id="next-display">
+            <canvas id="next-canvas-0" width="100" height="80"></canvas>
+            <canvas id="next-canvas-1" width="100" height="80"></canvas>
+            <canvas id="next-canvas-2" width="100" height="80"></canvas>
+            <canvas id="next-canvas-3" width="100" height="80"></canvas>
+            <canvas id="next-canvas-4" width="100" height="80"></canvas>
+          </div>
+        </div>
+        <div class="panel-section">
+          <h3>CONTROLS</h3>
+          <div id="controls-legend">
+            <div><kbd>←→</kbd> Move</div>
+            <div><kbd>↓</kbd>/<kbd>S</kbd> Soft Drop</div>
+            <div><kbd>Space</kbd> Hard Drop</div>
+            <div><kbd>↑</kbd>/<kbd>X</kbd> Rotate CW</div>
+            <div><kbd>Z</kbd>/<kbd>Ctrl</kbd> Rotate CCW</div>
+            <div><kbd>C</kbd>/<kbd>Shift</kbd> Hold</div>
+            <div><kbd>P</kbd>/<kbd>Esc</kbd> Pause</div>
+          </div>
+        </div>
+        <div class="panel-section">
+          <h3>AUDIO</h3>
+          <div id="audio-controls">
+            <label>Vol <input type="range" id="volume-slider" min="0" max="100" value="50"></label>
+            <label><input type="checkbox" id="music-toggle" checked> Music</label>
+            <label><input type="checkbox" id="sfx-toggle" checked> SFX</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // CODE WILL BE ADDED IN SUBSEQUENT PHASES
+  // Sections: CONSTANTS, STATE, AUDIO, INPUT, GAME_LOGIC, RENDERER, UI, INIT
+  </script>
+</body>
+</html>
